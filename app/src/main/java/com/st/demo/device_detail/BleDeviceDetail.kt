@@ -9,6 +9,7 @@ package com.st.demo.device_detail
 
 import android.annotation.SuppressLint
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.scrollable
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.Card
@@ -27,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -93,7 +96,7 @@ fun BleDeviceDetail(
             }
         }
 
-        Text("Name: ${bleDevice.value?.device?.name ?: ""}")
+        Text("Nome: ${bleDevice.value?.device?.name ?: ""}")
 
         Spacer(modifier = Modifier.height(4.dp))
 
@@ -114,11 +117,20 @@ fun BleDeviceDetail(
 
                 Card(
                     modifier = Modifier
-                        .fillMaxWidth().padding(bottom = 4.dp,top = 4.dp)
+                        .padding(vertical = 6.dp)
+                        .fillMaxWidth()
+                        .shadow(8.dp, RoundedCornerShape(16.dp))
+                        .border(
+                            width = 1.dp,
+                            color = Color.White.copy(alpha = 0.6f),
+                            shape = RoundedCornerShape(16.dp)
+                        )
                         .clickable {
                             navController.navigate("feature/${deviceId}/${item.name}")
                         },
-                    colors = CardDefaults.cardColors(containerColor = Color(color = 0xFFF7F8FA) /*Grey1*/),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color.White.copy(alpha = 0.4f)
+                    ),
                 ) {
                     Text(
                         modifier = Modifier

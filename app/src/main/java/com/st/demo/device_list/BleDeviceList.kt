@@ -27,6 +27,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Card
 import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
@@ -148,7 +150,8 @@ fun LeDevice(
 @Composable
 fun BleDeviceList(
     viewModel: BleDeviceListViewModel, navController: NavHostController
-) {
+)
+{
 
     var doNotShowRationale by rememberSaveable {
         mutableStateOf(false)
@@ -171,10 +174,6 @@ fun BleDeviceList(
     )
 
     if (locationPermissionState.allPermissionsGranted) {
-        // remember calculates the value passed to it only during the first composition. It then
-        // returns the same value for every subsequent composition. More details are available in the
-        // comments below.
-
         val scrollState = rememberScrollState()
         Column(
             modifier = Modifier
@@ -194,61 +193,122 @@ fun BleDeviceList(
             )
 
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
-
+                modifier = Modifier.padding(16.dp)
             ){
-                Card(modifier = Modifier
-                    .fillMaxWidth()
-                    .shadow(16.dp, shape = RoundedCornerShape(16.dp)),
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(16.dp, shape = RoundedCornerShape(16.dp)),
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFFE3F2FD).copy(alpha = 0.75f))
-                ) {
+                        containerColor = Color(0xFFE3F2FD).copy(alpha = 0.75f)
+                    )
+                )
+                {
                     Column(
                         modifier = Modifier.fillMaxSize()
                     )
                     {
-                        Row(modifier = Modifier.fillMaxSize()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Image(
                                 painter = painterResource(id = R.drawable.ic_bluetooth),
                                 contentDescription = "Icona Bluetooth",
                                 modifier = Modifier.size(44.dp),
                             )
-                            Button(
-                                onClick = { viewModel.startScan(false) }
-                            ){
-                                Text("Aggiorna")
+
+                            // Pulsante con effetto glass
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Color.White.copy(alpha = 0.3f))
+                                    .border(
+                                        width = 1.dp,
+                                        color = Color.White.copy(alpha = 0.5f),
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    .clickable { viewModel.startScan(false) }
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Aggiorna",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.SemiBold
+                                )
                             }
                         }
 
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
+
                         Text(
                             text = "Dispositivi Bluetooth trovati:",
                             fontSize = 22.sp,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(horizontal = 16.dp)
                         )
 
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        if (devices.value.isEmpty() && devicesLe.value.second.isEmpty() && isRefreshing.not()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Ricerca device in corso..",
+                                    textAlign = TextAlign.Center,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        Text(
+                            text = if(isBleScanning) {
+                                stringResource(R.string.st_le_deviceList_title)
+                            } else {
+                                stringResource(R.string.st_deviceList_title)
+                            },
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
                     }
+
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
                             .pullRefresh(pullRefreshState)
                     ){
-                        LazyColumn(modifier = Modifier.fillMaxSize()){
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp)
+                        ){
                             itemsIndexed(devices.value) { index, item ->
-                                Spacer(modifier = Modifier.padding(vertical = 40.dp))
+                                // Card con effetto glass
                                 Card(
                                     onClick = { navController.navigate("detail/${item.device.address}") },
                                     shape = RoundedCornerShape(16.dp),
-                                    elevation = CardDefaults.cardElevation(8.dp),
-
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = Color.White.copy(alpha = 0.4f)
+                                    ),
                                     modifier = Modifier
-                                        .padding(vertical = 8.dp)
+                                        .padding(vertical = 6.dp)
                                         .fillMaxWidth()
-                                        .shadow(4.dp, RoundedCornerShape(16.dp))
+                                        .shadow(8.dp, RoundedCornerShape(16.dp))
+                                        .border(
+                                            width = 1.dp,
+                                            color = Color.White.copy(alpha = 0.6f),
+                                            shape = RoundedCornerShape(16.dp)
+                                        )
                                 ) {
                                     Row(
                                         modifier = Modifier
@@ -268,16 +328,42 @@ fun BleDeviceList(
                                                     fontWeight = FontWeight.Bold
                                                 )
                                             )
+                                            Spacer(modifier = Modifier.height(4.dp))
                                             Text(
                                                 text = item.device.address,
                                                 style = MaterialTheme.typography.bodyMedium,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
+
+                                        // Pulsante dettagli con effetto glass
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(Color.White.copy(alpha = 0.3f))
+                                                .border(
+                                                    width = 1.dp,
+                                                    color = Color.White.copy(alpha = 0.5f),
+                                                    shape = RoundedCornerShape(8.dp)
+                                                )
+                                                .clickable {
+                                                    navController.navigate("detail/${item.device.address}")
+                                                }
+                                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = "Dettagli",
+                                                color = MaterialTheme.colorScheme.primary,
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
+
                         PullRefreshIndicator(
                             refreshing = isRefreshing,
                             state = pullRefreshState,
@@ -288,12 +374,11 @@ fun BleDeviceList(
                         )
                     }
                 }
-
             }
+
             LaunchedEffect(Unit) {
                 viewModel.startScan(true)
             }
-
         }
 
     } else {

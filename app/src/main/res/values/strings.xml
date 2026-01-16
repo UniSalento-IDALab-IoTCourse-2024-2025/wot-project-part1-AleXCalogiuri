@@ -8,7 +8,7 @@
 <resources>
     <string name="app_name">STBle Pothole</string>
 
-    <string name="st_deviceList_title">BLE Device List:</string>
+    <string name="st_deviceList_title">BLE Device Trovati:</string>
 
     <string name="st_le_deviceList_title">BLE LE Device List:</string>
 
