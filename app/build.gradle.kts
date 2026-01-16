@@ -103,6 +103,7 @@ dependencies {
     implementation(libs.bundles.network)
     implementation(libs.androidx.material2)
     implementation(libs.hilt.android)
+    implementation(libs.androidx.security.crypto)
     ksp(libs.hilt.compiler)
 
     debugImplementation(libs.androidx.compose.uitestmanifest)

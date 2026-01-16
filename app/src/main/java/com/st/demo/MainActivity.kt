@@ -14,10 +14,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -28,24 +33,42 @@ import com.st.demo.audio.AudioScreen
 import com.st.demo.device_detail.BleDeviceDetail
 import com.st.demo.device_list.BleDeviceList
 import com.st.demo.feature_detail.FeatureDetail
+import com.st.demo.model.SecureStorageManager
+import com.st.demo.ui.theme.HomeUser
+import com.st.demo.ui.theme.InfoApp
+import com.st.demo.ui.theme.Login
+import com.st.demo.ui.theme.Registration
+import com.st.demo.ui.theme.RegistrationSuccess
 import com.st.demo.ui.theme.StDemoTheme
+import com.st.demo.ui.theme.WelcomeScreen
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-
-        enableEdgeToEdge(statusBarStyle = SystemBarStyle.light(Color.TRANSPARENT,Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.light(Color.TRANSPARENT,Color.TRANSPARENT))
-
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
+        )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isNavigationBarContrastEnforced = false
         }
-
         super.onCreate(savedInstanceState)
-
         setContent {
-            Box(Modifier.safeDrawingPadding()) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .safeDrawingPadding()
+            ) {
+                // Immagine di background
+                Image(
+                    painter = painterResource(id = R.drawable.road),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.FillBounds // o ContentScale.FillBounds a seconda delle tue esigenze
+                )
+
+
                 MainScreen()
             }
         }
@@ -58,7 +81,56 @@ private fun MainScreen() {
 
     StDemoTheme {
         NavHost(
-            navController = navController, startDestination = "list") {
+            navController = navController, startDestination = "welcome") {
+
+            composable(route = "welcome"){
+                WelcomeScreen(navController = navController)
+            }
+            composable(route = "info") {
+                InfoApp(
+                    navController = navController
+                )
+            }
+
+            composable(route = "login"){
+                Login(
+                    viewModel = hiltViewModel(),
+                    navController = navController
+                )
+            }
+
+            composable(route = "registration") {
+                Registration(
+                    viewModel = hiltViewModel(),
+                    navController = navController
+                )
+            }
+
+            composable(
+                route = "home/{email}",
+                arguments = listOf(
+                    navArgument("email") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val email = backStackEntry.arguments?.getString("email")!!
+
+                HomeUser(
+                    navController = navController,
+                    email = email,
+                    viewModel = hiltViewModel(),
+                    secureStorageManager = SecureStorageManager(context = LocalContext.current)
+                )
+            }
+
+            composable(route= "okRegistrazione"){
+                RegistrationSuccess(
+                    navController = navController,
+                    viewModel = hiltViewModel()
+                )
+            }
+
+
+
 
             composable(route = "list") {
                 BleDeviceList(

@@ -6,7 +6,7 @@
   ~ If no LICENSE file comes with this software, it is provided AS-IS.
   -->
 <resources>
-    <string name="app_name">STBleSDK</string>
+    <string name="app_name">STBle Pothole</string>
 
     <string name="st_deviceList_title">BLE Device List:</string>
 

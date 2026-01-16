@@ -13,6 +13,10 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.os.Build
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.*
@@ -21,6 +25,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.Card
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
@@ -30,7 +35,11 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -54,7 +63,8 @@ fun LeDevice(
     protocolFwId: Int,
     protocolId: Int,
     payloadData: String
-) {
+)
+{
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(4.dp),
@@ -164,6 +174,7 @@ fun BleDeviceList(
         // remember calculates the value passed to it only during the first composition. It then
         // returns the same value for every subsequent composition. More details are available in the
         // comments below.
+
         val scrollState = rememberScrollState()
         Column(
             modifier = Modifier
@@ -177,119 +188,114 @@ fun BleDeviceList(
             val devicesLe = viewModel.scanBleLeDevices.collectAsState()
             val isBleScanning by viewModel.isLEScanning.collectAsState()
             val isRefreshing by viewModel.isLoading.collectAsState()
+            val pullRefreshState = rememberPullRefreshState(
+                refreshing = isRefreshing,
+                onRefresh = { viewModel.startScan(true) }
+            )
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                ElevatedButton(onClick = { viewModel.startScan(false) }) {
-                    Text(
-                        "Scan Devices\nBlueST-SDK",
-                        textAlign = TextAlign.Center
-                    )
-                }
-                ElevatedButton(onClick = { viewModel.startScan(true) }) {
-                    Text(
-                        "Scan Devices\nBlueST-SDK-LE",
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
 
-            Spacer(modifier = Modifier.height(4.dp))
-
-            if(isBleScanning) {
-                Text(text = stringResource(R.string.st_le_deviceList_title))
-            } else {
-                Text(text = stringResource(R.string.st_deviceList_title))
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-
-            val pullRefreshState = rememberPullRefreshState(refreshing = isRefreshing, onRefresh = {
-                viewModel.scanSelectedDevicesType()
-            })
-
-            if (devices.value.isEmpty() && devicesLe.value.second.isEmpty() && isRefreshing.not()) {
-                Box(modifier = Modifier.fillMaxSize(),contentAlignment = Alignment.Center) {
-                    Text(
-                        text = "Press one button\nfor searching\ncompatible devices",
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center, fontSize = 16.sp, fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-
-            Box(modifier = Modifier.pullRefresh(state = pullRefreshState)) {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize()
+            ){
+                Card(modifier = Modifier
+                    .fillMaxWidth()
+                    .shadow(16.dp, shape = RoundedCornerShape(16.dp)),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFFE3F2FD).copy(alpha = 0.75f))
                 ) {
-                    itemsIndexed(
-                        items = devices.value,
-                        key = { _, item -> item.device.address }) { index, item ->
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(4.dp),
-                            shadowElevation = 10.dp,
-                            onClick = {
-                                navController.navigate("detail/${item.device.address}")
-                            }) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(8.dp)
-                            ) {
-                                Text(
-                                    modifier = Modifier.padding(8.dp),
-                                    text = "Name = ${item.device.name}"
-                                )
-                                Text(
-                                    modifier = Modifier.padding(8.dp),
-                                    text = "Address = ${item.device.address}"
-                                )
+                    Column(
+                        modifier = Modifier.fillMaxSize()
+                    )
+                    {
+                        Row(modifier = Modifier.fillMaxSize()) {
+                            Image(
+                                painter = painterResource(id = R.drawable.ic_bluetooth),
+                                contentDescription = "Icona Bluetooth",
+                                modifier = Modifier.size(44.dp),
+                            )
+                            Button(
+                                onClick = { viewModel.startScan(false) }
+                            ){
+                                Text("Aggiorna")
                             }
                         }
 
-                        if (devices.value.lastIndex != index) {
-                            HorizontalDivider()
-                        }
-                    }
-
-                    itemsIndexed(
-                        items = devicesLe.value.second,
-                        key = { _, item -> item.device.address }) { index, item ->
-                        LeDevice(
-                            deviceName = item.device.name,
-                            deviceAddress = item.device.address,
-                            protocolDeviceId = item.advertiseData.getDeviceId(),
-                            protocolFwId = item.advertiseData.getFwId(),
-                            protocolId = item.advertiseData.getProtocolId(),
-                            payloadData = item.advertiseData.getPayloadData().toHexString(),
-                            timestamp = devicesLe.value.first
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Dispositivi Bluetooth trovati:",
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
 
-                        if (devicesLe.value.second.lastIndex != index) {
-                            HorizontalDivider()
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .pullRefresh(pullRefreshState)
+                    ){
+                        LazyColumn(modifier = Modifier.fillMaxSize()){
+                            itemsIndexed(devices.value) { index, item ->
+                                Spacer(modifier = Modifier.padding(vertical = 40.dp))
+                                Card(
+                                    onClick = { navController.navigate("detail/${item.device.address}") },
+                                    shape = RoundedCornerShape(16.dp),
+                                    elevation = CardDefaults.cardElevation(8.dp),
+
+                                    modifier = Modifier
+                                        .padding(vertical = 8.dp)
+                                        .fillMaxWidth()
+                                        .shadow(4.dp, RoundedCornerShape(16.dp))
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .padding(end = 16.dp)
+                                        ) {
+                                            Text(
+                                                text = item.device.name,
+                                                style = MaterialTheme.typography.titleMedium.copy(
+                                                    color = MaterialTheme.colorScheme.onSurface,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            )
+                                            Text(
+                                                text = item.device.address,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
+                        PullRefreshIndicator(
+                            refreshing = isRefreshing,
+                            state = pullRefreshState,
+                            modifier = Modifier.align(Alignment.TopCenter),
+                            backgroundColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                            scale = true
+                        )
                     }
                 }
 
-                PullRefreshIndicator(
-                    refreshing = isRefreshing,
-                    state = pullRefreshState,
-                    modifier = Modifier.align(alignment = Alignment.TopCenter),
-                    backgroundColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    scale = true
-                )
             }
+            LaunchedEffect(Unit) {
+                viewModel.startScan(true)
+            }
+
         }
 
-//        LaunchedEffect(key1 = Unit) {
-//            viewModel.startScan(false)
-//        }
     } else {
         if (doNotShowRationale) {
             Column(

@@ -34,9 +34,12 @@ class BleDeviceListViewModel @Inject constructor(
     private val _isLEScanning = MutableStateFlow(false)
     val isLEScanning = _isLEScanning.asStateFlow()
 
+    /*
     fun scanSelectedDevicesType() {
         startScan(_isLEScanning.value)
     }
+
+     */
 
     private var scanPeripheralJob: Job? = null
 
