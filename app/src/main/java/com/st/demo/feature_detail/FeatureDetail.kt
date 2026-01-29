@@ -39,7 +39,7 @@ fun FeatureDetail(
     }
 
     val features = viewModel.featureUpdates
-
+    Text("Feature list :3")
     Column(
         modifier = Modifier
             .fillMaxSize()

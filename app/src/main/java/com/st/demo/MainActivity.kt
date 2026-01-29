@@ -33,6 +33,7 @@ import com.st.demo.audio.AudioScreen
 import com.st.demo.device_detail.BleDeviceDetail
 import com.st.demo.device_list.BleDeviceList
 import com.st.demo.feature_detail.FeatureDetail
+import com.st.demo.feature_detail.SensorTileAndSmartphone
 import com.st.demo.model.SecureStorageManager
 import com.st.demo.ui.theme.HomeUser
 import com.st.demo.ui.theme.InfoApp
@@ -81,7 +82,7 @@ private fun MainScreen() {
 
     StDemoTheme {
         NavHost(
-            navController = navController, startDestination = "welcome") {
+            navController = navController, startDestination = "list") {
 
             composable(route = "welcome"){
                 WelcomeScreen(navController = navController)
@@ -168,6 +169,25 @@ private fun MainScreen() {
                     }
                 }
             }
+
+            composable(
+                route = "feature/{deviceId}/{featureName}/HARSmartphone",
+                arguments = listOf(navArgument("deviceId") { type = NavType.StringType },
+                    navArgument("featureName") { type = NavType.StringType })
+            ) { backStackEntry ->
+                backStackEntry.arguments?.getString("deviceId")?.let { deviceId ->
+                    backStackEntry.arguments?.getString("featureName")?.let { featureName ->
+                        SensorTileAndSmartphone(
+                            featureViewModel = hiltViewModel(),
+                            recognitionViewModel = hiltViewModel(),
+                            navController = navController,
+                            deviceId = deviceId,
+                            featureName = featureName
+                        )
+                    }
+                }
+            }
+
 
             composable(
                 route = "audio/{deviceId}",

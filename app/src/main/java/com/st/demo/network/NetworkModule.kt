@@ -6,6 +6,7 @@ import android.net.NetworkCapabilities
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import com.st.demo.api_interface.AuthService
 import com.st.demo.api_interface.NotificationInterface
+import com.st.demo.api_interface.SensorDataService
 import com.st.demo.exceptions.NoConnectivityException
 import com.st.demo.utils.Constants.Companion.BASE_URL
 
@@ -73,6 +74,12 @@ object NetworkModule {
     @Singleton
     fun provideAuthService(@BackendRetrofit retrofit: Retrofit): AuthService { // MODIFICATO
         return retrofit.create(AuthService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideSensorDataService(@BackendRetrofit retrofit: Retrofit): SensorDataService { // MODIFICATO
+        return retrofit.create(SensorDataService::class.java)
     }
 
     @Provides
