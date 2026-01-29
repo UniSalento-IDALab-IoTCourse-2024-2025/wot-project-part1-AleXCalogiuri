@@ -15,6 +15,6 @@
     <string name="st_audioScreenTitle">Audio Screen</string>
     <string name="st_testAudio">Test\nAudio</string>
 
-    <string name="st_feature_updatesLabel">Updates:</string>
-    <string name="st_feature_featureNameLabel">Name: %1$s</string>
+    <string name="st_feature_updatesLabel">Dati in tempo reale:</string>
+    <string name="st_feature_featureNameLabel">Funzione: %1$s</string>
 </resources>

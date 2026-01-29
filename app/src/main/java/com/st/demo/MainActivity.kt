@@ -33,6 +33,7 @@ import com.st.demo.audio.AudioScreen
 import com.st.demo.device_detail.BleDeviceDetail
 import com.st.demo.device_list.BleDeviceList
 import com.st.demo.feature_detail.FeatureDetail
+import com.st.demo.feature_detail.PotholeDetection
 import com.st.demo.feature_detail.SensorTileAndSmartphone
 import com.st.demo.model.SecureStorageManager
 import com.st.demo.ui.theme.HomeUser
@@ -188,6 +189,23 @@ private fun MainScreen() {
                 }
             }
 
+            composable(
+                route = "feature/{deviceId}/{featureName}/mlc",
+                arguments = listOf(navArgument("deviceId") { type = NavType.StringType },
+                    navArgument("featureName") { type = NavType.StringType })
+            ) { backStackEntry ->
+                backStackEntry.arguments?.getString("deviceId")?.let { deviceId ->
+                    backStackEntry.arguments?.getString("featureName")?.let { featureName ->
+                        PotholeDetection(
+                            viewModel = androidx.hilt.navigation.compose.hiltViewModel(),
+                            viewModelBle = hiltViewModel(),
+                            navController = navController,
+                            deviceId = deviceId,
+                            featureName = featureName
+                        )
+                    }
+                }
+            }
 
             composable(
                 route = "audio/{deviceId}",

@@ -21,7 +21,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
 @HiltViewModel
 class BleDeviceListViewModel @Inject constructor(
     private val blueManager: BlueManager
@@ -34,12 +33,9 @@ class BleDeviceListViewModel @Inject constructor(
     private val _isLEScanning = MutableStateFlow(false)
     val isLEScanning = _isLEScanning.asStateFlow()
 
-    /*
     fun scanSelectedDevicesType() {
         startScan(_isLEScanning.value)
     }
-
-     */
 
     private var scanPeripheralJob: Job? = null
 
