@@ -1,6 +1,6 @@
 # Pothole Detection
 
-## Descrizione del progettoù
+## Descrizione del progetto
 
 Il progetto Pothole detection implementa un sistema classificazione di buche, con l'uso della SensorTile.box PRO di STMicroelectronics. Il sistema è in grado di rilevare in tempo reale le presenza di buche durante la guida. Oltre all'identificazione il sistema permette di tracciare la posizione e inviare una segnalazione ad un sistema ml che identifica lo stato di salute della strada.
 
@@ -22,6 +22,6 @@ L'applicazione Android permette di:
 
 Tramite Backend, l'applicazione è dotata di diverse funzionalità aggiuntive:
 
-    Registrazione e autenticazione degli utenti.
-    Memorizzazione dei riconoscimenti delle buchein un database remoto.
-    Visualizzazione di uno storico delle buche globale e indicizzato per città.
+    - Registrazione e autenticazione degli utenti.
+    - Memorizzazione dei riconoscimenti delle buchein un database remoto.
+    - Visualizzazione di uno storico delle buche globale e indicizzato per città.
