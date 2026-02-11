@@ -21,7 +21,6 @@ L'applicazione Android permette di:
 ## Funzionalità tramite Backend
 
 Tramite Backend, l'applicazione è dotata di diverse funzionalità aggiuntive:
-
     - Registrazione e autenticazione degli utenti.
     - Memorizzazione dei riconoscimenti delle buchein un database remoto.
     - Visualizzazione di uno storico delle buche globale e indicizzato per città.
