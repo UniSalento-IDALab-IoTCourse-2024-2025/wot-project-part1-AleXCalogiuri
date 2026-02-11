@@ -5,11 +5,13 @@ import com.st.demo.api_interface.SensorDataService
 import com.st.demo.model.LoginResponse
 import com.st.demo.model.LoginUser
 import com.st.demo.model.RegistrationResponse
+import com.st.demo.model.Road
 import com.st.demo.model.Sensor
 import com.st.demo.model.SensorData
 import com.st.demo.model.SensorDataResponse
 import com.st.demo.model.User
 import com.st.demo.repository_impl.AuthRepositoryImpl
+import com.st.demo.repository_impl.RoadRepositoryImpl
 import com.st.demo.repository_impl.SensorRepositoryImpl
 import com.st.demo.wrappers.Resource
 
@@ -40,4 +42,13 @@ class RemoveSensor @Inject constructor(private val sensorRepository: SensorRepos
 
 class Classifica @Inject constructor(private val sensorRepository: SensorRepositoryImpl){
     suspend operator fun invoke(sensorData: SensorData): Resource<SensorDataResponse> = sensorRepository.classifica(sensorData)
+}
+
+
+class GetAllRoads @Inject constructor(private  val roadRepository: RoadRepositoryImpl){
+    suspend operator fun invoke(): Resource<List<Road>> = roadRepository.getAllRoads()
+}
+
+class GetRoadByCity @Inject constructor(private  val roadRepository: RoadRepositoryImpl){
+    suspend operator fun invoke(city: String): Resource<List<Road>> = roadRepository.getRoadByCity(city)
 }

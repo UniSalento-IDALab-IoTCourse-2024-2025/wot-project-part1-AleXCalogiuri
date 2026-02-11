@@ -26,8 +26,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,6 +42,8 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -50,8 +55,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import com.st.blue_sdk.features.gyroscope.GyroscopeInfo
 import com.st.demo.R
 import com.st.demo.device_detail.BleDeviceDetailViewModel
+import com.st.demo.intents.PredictionIntent
+import com.st.demo.model.SensorData
+import com.st.demo.view_model.RecognitionViewModel
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 import java.io.File
 import java.io.FileWriter
 import java.text.SimpleDateFormat
@@ -64,20 +77,26 @@ import kotlin.collections.get
 fun PotholeDetection(
     navController: NavHostController,
     viewModel: FeatureDetailViewModel,
-    viewModelBle: BleDeviceDetailViewModel,
+    recognitionViewModel: RecognitionViewModel,
     deviceId: String,
     featureName: String
-) {
+)
+{
     val context = LocalContext.current
+    val appContext = LocalContext.current.applicationContext
     val backHandlingEnabled by remember { mutableStateOf(true) }
 
-    // Stati MLC
+
     val mlcStatus = remember { mutableStateOf("UNKNOWN") }
     val mlcCode = remember { mutableIntStateOf(-1) }
+    var buttonEnabled by remember { mutableStateOf(true) }
+    var resultMessage by remember { mutableStateOf<String?>(null) }
 
     //  Stati sensori
     val accelerometerData = remember { mutableStateOf<Triple<Float, Float, Float>?>(null) }
     val gyroscopeData = remember { mutableStateOf<Triple<Float, Float, Float>?>(null) }
+    val latestGyroData = remember { mutableStateOf(Triple(0f, 0f, 0f)) }
+    val address = remember { mutableStateOf(String()) }
     val locationData = remember { mutableStateOf<Location?>(null) }
 
     //  Log delle anomalie
@@ -96,7 +115,6 @@ fun PotholeDetection(
     //  Setup accelerometro
     DisposableEffect(Unit) {
         val accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-        val gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
 
         val accelerometerListener = object : SensorEventListener {
             override fun onSensorChanged(event: SensorEvent?) {
@@ -107,29 +125,18 @@ fun PotholeDetection(
             override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
         }
 
-        val gyroscopeListener = object : SensorEventListener {
-            override fun onSensorChanged(event: SensorEvent?) {
-                event?.let {
-                    gyroscopeData.value = Triple(it.values[0], it.values[1], it.values[2])
-                }
-            }
-            override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
-        }
+
 
         sensorManager.registerListener(
             accelerometerListener,
             accelerometer,
             SensorManager.SENSOR_DELAY_NORMAL
         )
-        sensorManager.registerListener(
-            gyroscopeListener,
-            gyroscope,
-            SensorManager.SENSOR_DELAY_NORMAL
-        )
+
 
         onDispose {
             sensorManager.unregisterListener(accelerometerListener)
-            sensorManager.unregisterListener(gyroscopeListener)
+
         }
     }
 
@@ -162,58 +169,47 @@ fun PotholeDetection(
 
     LaunchedEffect(Unit) {
         viewModel.startCalibration(deviceId, featureName)
+        //viewModel.startCalibration(deviceId,"Gyroscope")
+    }
+    LaunchedEffect(Unit) {
+        recognitionViewModel.start()
     }
 
     BackHandler(enabled = backHandlingEnabled) {
         viewModel.disconnectFeature(deviceId = deviceId, featureName = featureName)
+        viewModel.disconnectFeature(deviceId=deviceId, featureName = "Gyroscope")
         navController.popBackStack()
     }
 
     val featureUpdate = viewModel.featureUpdates.value
+    val featureUpdatesMap by viewModel.featureUpdatesMapFlow.collectAsState()
 
     //  RILEVA ANOMALIA E SALVA TUTTI I DATI
-    LaunchedEffect(featureUpdate) {
-        featureUpdate?.let { update ->
+    LaunchedEffect(featureUpdatesMap["Machine Learning Core"]) {
+        featureUpdatesMap["Machine Learning Core"]?.let { update ->
             val dataString = update.toString()
-
             try {
-                if (update.featureName == "Machine Learning Core") {
-                    val mlc0Regex = Regex("MLC_0\\s*=\\s*(\\d+)")
-                    val match = mlc0Regex.find(dataString)
-
-                    if (match != null) {
-                        val value = match.groupValues[1].toInt()
-                        mlcCode.intValue = value
-
-                        val newStatus = when (value) {
-                            255 -> "ANORMAL"
-                            0 -> "NORMAL"
-                            else -> "UNKNOWN"
-                        }
-
-                        //  SE RILEVA ANOMALIA -> SALVA TUTTI I DATI
-                        if (newStatus == "ANORMAL" && mlcStatus.value != "ANORMAL") {
-                            val potholeEvent = PotholeEvent(
-                                timestamp = System.currentTimeMillis(),
-                                mlcCode = value,
-                                accelerometer = accelerometerData.value,
-                                gyroscope = gyroscopeData.value,
-                                location = locationData.value
-                            )
-
-                            potholeLog.add(potholeEvent)
-
-                            Log.d("PotholeDetection", " BUCA RILEVATA!")
-                            Log.d("PotholeDetection", "Accelerometro: ${accelerometerData.value}")
-                            Log.d("PotholeDetection", "Giroscopio: ${gyroscopeData.value}")
-                            Log.d("PotholeDetection", "GPS: ${locationData.value?.latitude}, ${locationData.value?.longitude}")
-
-                            // Salva su file o database
-                            savePotholeEvent(context, potholeEvent)
-                        }
-
-                        mlcStatus.value = newStatus
+                val mlc0Regex = Regex("MLC_0\\s*=\\s*(\\d+)")
+                val match = mlc0Regex.find(dataString)
+                if (match != null) {
+                    val value = match.groupValues[1].toInt()
+                    mlcCode.intValue = value
+                    val newStatus = when (value) {
+                        255 -> "ANORMAL"
+                        0 -> "NORMAL"
+                        else -> "UNKNOWN"
                     }
+
+                    if (newStatus == "ANORMAL" && mlcStatus.value != "ANORMAL") {
+                        buttonEnabled = true
+
+                        address.value = locationData.value?.let {
+                            recognitionViewModel.getStreetName(appContext, it.latitude, it.longitude)
+                        } ?: "GPS non disponibile"
+                        Log.d("PotholeDetection", "BUCA RILEVATA!")
+                        Log.d("PotholeDetection", "Giroscopio: ${latestGyroData.value}")
+                    }
+                    mlcStatus.value = newStatus
                 }
             } catch (e: Exception) {
                 Log.e("PotholeDetection", "Error parsing MLC data", e)
@@ -221,6 +217,20 @@ fun PotholeDetection(
         }
     }
 
+// Per Giroscopio
+    LaunchedEffect(featureUpdatesMap["Gyroscope"]) {
+        featureUpdatesMap["Gyroscope"]?.let { update ->
+            try {
+                Log.v("PotholeDetection", "GYRO RAW: ${update.toString()}")
+                // Usa la funzione corretta per il giroscopio
+                latestGyroData.value = recognitionViewModel.extractCoordinatesFromLoggable(update.toString())
+                Log.v("PotholeDetection", "GIROSCOPIO: ${latestGyroData.value}")
+
+            } catch (e: Exception) {
+                Log.e("PotholeDetection", "Error parsing Gyroscope data", e)
+            }
+        }
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -247,8 +257,10 @@ fun PotholeDetection(
             colors = CardDefaults.cardColors(
                 containerColor = Color.White.copy(alpha = 0.9f)
             )
-        ) {
-            Column(modifier = Modifier.padding(12.dp)) {
+        )
+        {
+            Column(modifier = Modifier.padding(12.dp))
+            {
                 Text(
                     text = " Sensori in tempo reale",
                     style = MaterialTheme.typography.bodyMedium.copy(
@@ -291,9 +303,20 @@ fun PotholeDetection(
                 } ?: Text(
                     text = " GPS: In attesa segnale...",
                     style = MaterialTheme.typography.bodySmall,
+                    color = Color.DarkGray
+                )
+                Text(
+                    text = " Via: ${address.value}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.DarkGray
+                )
+                //GIROSCOPIO
+                val (gyroX, gyroY, gyroZ) = latestGyroData.value
+                Text(
+                    text = " Giroscopio: X:%.2f Y:%.2f Z:%.2f".format(gyroX, gyroY, gyroZ),
+                    style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray
                 )
-
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
@@ -303,6 +326,7 @@ fun PotholeDetection(
                     ),
                     color = Color.Red
                 )
+
             }
         }
 
@@ -321,7 +345,8 @@ fun PotholeDetection(
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceAround
-        ) {
+        )
+        {
             ActivityCard(
                 activityName = "Normal Road",
                 imageRes = R.drawable.car_road,
@@ -338,22 +363,126 @@ fun PotholeDetection(
                 modifier = Modifier.weight(1f)
             )
         }
-
         Spacer(modifier = Modifier.weight(1f))
+        resultMessage?.let { message ->
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = message,
+                color = if (message.contains("Errore")) Color.Red else Color(0xFF2E7D32),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+        //questo per aspettare la response del server
+        val coroutineScope = rememberCoroutineScope()
+        val predictionState by recognitionViewModel.state.collectAsState()
+        //Bottone per inviare segnalazione
+        ActionButtonPothole("Invia Segnalazione", buttonEnabled) {
+            buttonEnabled = false
+            recognitionViewModel.resetState()
+            // Prepare data
+            val (accX, accY, accZ) = accelerometerData.value ?: Triple(0.2f, 0.2f, 0f)
+            val (gyroX, gyroY, gyroZ) = latestGyroData.value
+            val lat = locationData.value?.latitude ?: 0.0
+            val lon = locationData.value?.longitude ?: 0.0
+
+
+            val request = SensorData(
+
+                1,
+                accX.toDouble(),
+                accY.toDouble(),
+                gyroX.toDouble(),
+                gyroY.toDouble(),
+                gyroZ.toDouble(),
+                lat,
+                lon,
+                1,
+                address.value
+            )
+
+
+            Log.d("PotholeButton", "Sending prediction request: $request")
+            recognitionViewModel.sendIntent(PredictionIntent.predict(request))
+
+            coroutineScope.launch {
+                try {
+                    // Timeout per evitare attese infinite
+                    withTimeout(10000) { // 10 secondi
+                        val state = recognitionViewModel.state
+                            .first { !it.isLoading && (it.predictionResponse != null || it.message != null) }
+
+                        when {
+                            // Caso successo
+                            state.predictionResponse != null -> {
+                                val response = state.predictionResponse
+                                val potholeEvent = PotholeEvent(
+                                    timestamp = System.currentTimeMillis(),
+                                    classificazione = response.classificazione,
+                                    location = locationData.value
+                                )
+                                potholeLog.add(potholeEvent)
+                                savePotholeEvent(context, potholeEvent)
+                                resultMessage = "Segnalazione salvata: ${response.classificazione}"
+                                Log.d("PotholeButton", "Success: ${response.classificazione}")
+                            }
+
+                            // Caso errore
+                            state.message != null -> {
+                                resultMessage = "Errore: ${state.message},Data: $request"
+                                Log.e("PotholeButton", "Error: ${state.message}")
+                                buttonEnabled = true // Riabilita il pulsante in caso di errore
+                            }
+
+                            // Caso imprevisto
+                            else -> {
+                                resultMessage = "Errore sconosciuto"
+                                Log.e("PotholeButton", "Unknown error state")
+                                buttonEnabled = true
+                            }
+                        }
+                    }
+                } catch (e: TimeoutCancellationException) {
+                    resultMessage = "Timeout: la richiesta ha impiegato troppo tempo"
+                    Log.e("PotholeButton", "Timeout waiting for prediction", e)
+                    buttonEnabled = true
+                } catch (e: Exception) {
+                    resultMessage = "Errore: ${e.message}"
+                    Log.e("PotholeButton", "Exception during prediction", e)
+                    buttonEnabled = true
+                }
+            }
+        }
+
+        // Nella UI, sotto il pulsante:
+        if (predictionState.isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.padding(16.dp)
+            )
+        }
+
+        predictionState.message?.let { errorMessage ->
+            Text(
+                text = errorMessage,
+                color = Color.Red,
+                modifier = Modifier.padding(8.dp)
+            )
+        }
     }
 
     LaunchedEffect(true) {
         viewModel.observeFeature(deviceId = deviceId, featureName = featureName)
+        viewModel.observeFeature(deviceId= deviceId, featureName = "Gyroscope")
+
         viewModel.sendExtendedCommand(featureName = featureName, deviceId = deviceId)
+        viewModel.sendExtendedCommand(featureName = "Gyroscope", deviceId = deviceId)
     }
 }
 
 // Data class per salvare eventi
 data class PotholeEvent(
     val timestamp: Long,
-    val mlcCode: Int,
-    val accelerometer: Triple<Float, Float, Float>?,
-    val gyroscope: Triple<Float, Float, Float>?,
+    val classificazione: String,
     val location: Location?
 )
 
@@ -366,7 +495,7 @@ fun savePotholeEvent(context: Context, event: PotholeEvent) {
         FileWriter(file, true).use { writer ->
             // Header se file nuovo
             if (!exists) {
-                writer.append("Timestamp,Date,MLC_Code,Acc_X,Acc_Y,Acc_Z,Gyro_X,Gyro_Y,Gyro_Z,Latitude,Longitude,Accuracy\n")
+                writer.append("Timestamp,Date,classificazione,Latitude,Longitude,Accuracy\n")
             }
 
             // Dati
@@ -375,13 +504,7 @@ fun savePotholeEvent(context: Context, event: PotholeEvent) {
 
             writer.append("${event.timestamp},")
             writer.append("$date,")
-            writer.append("${event.mlcCode},")
-            writer.append("${event.accelerometer?.first ?: ""},")
-            writer.append("${event.accelerometer?.second ?: ""},")
-            writer.append("${event.accelerometer?.third ?: ""},")
-            writer.append("${event.gyroscope?.first ?: ""},")
-            writer.append("${event.gyroscope?.second ?: ""},")
-            writer.append("${event.gyroscope?.third ?: ""},")
+            writer.append("${event.classificazione},")
             writer.append("${event.location?.latitude ?: ""},")
             writer.append("${event.location?.longitude ?: ""},")
             writer.append("${event.location?.accuracy ?: ""}\n")
@@ -433,8 +556,19 @@ fun ActivityCard(
     }
 }
 
-fun extractActivityFromLoggable(dataString: String): String {
-    val regex = Regex("Activity\\s*=\\s*(\\w+)")
-    val matchResult = regex.find(dataString)
-    return matchResult?.groupValues?.get(1) ?: "Normal"
+
+@Composable
+fun ActionButtonPothole(text: String,isEnabled: Boolean, onClick: () -> Unit) {
+    //var isClicked by remember { mutableStateOf(false) }
+    Button(
+        onClick = onClick,
+        enabled = isEnabled,
+        modifier = Modifier.fillMaxWidth(),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color(0xFF3A7BD5),
+            disabledContainerColor = Color.Gray
+        )
+    ) {
+        Text(text)
+    }
 }

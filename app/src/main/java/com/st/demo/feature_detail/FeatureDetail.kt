@@ -40,6 +40,8 @@ fun FeatureDetail(
 
     LaunchedEffect(Unit) {
         viewModel.startCalibration(deviceId, featureName)
+
+
     }
 
     BackHandler(enabled = backHandlingEnabled) {

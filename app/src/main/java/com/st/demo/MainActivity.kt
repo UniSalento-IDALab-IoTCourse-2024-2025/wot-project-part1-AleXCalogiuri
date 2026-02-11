@@ -7,9 +7,11 @@
  */
 package com.st.demo
 
+import OpenMap
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -31,10 +33,12 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.st.demo.audio.AudioScreen
 import com.st.demo.device_detail.BleDeviceDetail
+import com.st.demo.device_detail.BleDeviceDetailViewModel
 import com.st.demo.device_list.BleDeviceList
 import com.st.demo.feature_detail.FeatureDetail
+import com.st.demo.feature_detail.FeatureDetailViewModel
 import com.st.demo.feature_detail.PotholeDetection
-import com.st.demo.feature_detail.SensorTileAndSmartphone
+import com.st.demo.view_model.RecognitionViewModel
 import com.st.demo.model.SecureStorageManager
 import com.st.demo.ui.theme.HomeUser
 import com.st.demo.ui.theme.InfoApp
@@ -43,6 +47,8 @@ import com.st.demo.ui.theme.Registration
 import com.st.demo.ui.theme.RegistrationSuccess
 import com.st.demo.ui.theme.StDemoTheme
 import com.st.demo.ui.theme.WelcomeScreen
+import com.st.demo.view_model.LoginViewModel
+import com.st.demo.view_model.RoadViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -83,7 +89,7 @@ private fun MainScreen() {
 
     StDemoTheme {
         NavHost(
-            navController = navController, startDestination = "list") {
+            navController = navController, startDestination = "welcome") {
 
             composable(route = "welcome"){
                 WelcomeScreen(navController = navController)
@@ -115,14 +121,31 @@ private fun MainScreen() {
                 )
             ) { backStackEntry ->
                 val email = backStackEntry.arguments?.getString("email")!!
-
+                val loginViewModel: LoginViewModel = hiltViewModel()
+                val roadViewModel: RoadViewModel = hiltViewModel()
                 HomeUser(
                     navController = navController,
                     email = email,
-                    viewModel = hiltViewModel(),
+                    viewModel = loginViewModel,
+
                     secureStorageManager = SecureStorageManager(context = LocalContext.current)
                 )
             }
+
+            composable(
+                route = "map?city={city}",
+                arguments = listOf(
+                    navArgument("city") {
+                        type = NavType.StringType
+                        defaultValue = ""
+                        nullable = true
+                    }
+                )
+            ) { backStackEntry ->
+                val city = backStackEntry.arguments?.getString("city") ?: ""
+                OpenMap(city = city)
+            }
+
 
             composable(route= "okRegistrazione"){
                 RegistrationSuccess(
@@ -172,33 +195,18 @@ private fun MainScreen() {
             }
 
             composable(
-                route = "feature/{deviceId}/{featureName}/HARSmartphone",
-                arguments = listOf(navArgument("deviceId") { type = NavType.StringType },
-                    navArgument("featureName") { type = NavType.StringType })
-            ) { backStackEntry ->
-                backStackEntry.arguments?.getString("deviceId")?.let { deviceId ->
-                    backStackEntry.arguments?.getString("featureName")?.let { featureName ->
-                        SensorTileAndSmartphone(
-                            featureViewModel = hiltViewModel(),
-                            recognitionViewModel = hiltViewModel(),
-                            navController = navController,
-                            deviceId = deviceId,
-                            featureName = featureName
-                        )
-                    }
-                }
-            }
-
-            composable(
                 route = "feature/{deviceId}/{featureName}/mlc",
                 arguments = listOf(navArgument("deviceId") { type = NavType.StringType },
                     navArgument("featureName") { type = NavType.StringType })
             ) { backStackEntry ->
                 backStackEntry.arguments?.getString("deviceId")?.let { deviceId ->
                     backStackEntry.arguments?.getString("featureName")?.let { featureName ->
+                        val featureViewModel: FeatureDetailViewModel = hiltViewModel()
+                        val recognitionViewModel: RecognitionViewModel = hiltViewModel()
+                        Log.e("Navigation", "ViewModel injected successfully")
                         PotholeDetection(
-                            viewModel = androidx.hilt.navigation.compose.hiltViewModel(),
-                            viewModelBle = hiltViewModel(),
+                            viewModel = featureViewModel,
+                            recognitionViewModel = recognitionViewModel,
                             navController = navController,
                             deviceId = deviceId,
                             featureName = featureName

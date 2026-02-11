@@ -226,6 +226,7 @@ fun BleDeviceDetail(
                             .clickable {
                                 if (item.name == "Machine Learning Core") {
                                     navController.navigate("feature/${deviceId}/${item.name}/mlc")
+                                    //navController.navigate("feature/${deviceId}/${item.name}/HARSmartphone")
                                 } else {
                                     navController.navigate("feature/$deviceId/${item.name}")
                                 }

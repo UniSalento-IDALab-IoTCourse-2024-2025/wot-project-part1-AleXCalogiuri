@@ -1,27 +1,30 @@
 package com.st.demo.model
 
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerialName
-import java.time.LocalDateTime
 
+@Serializable
 data class SensorData (
+    @SerialName("sensor_id")
+    val sensorId: Int,
+    @SerialName("acc_x")
+    val accelerometerX: Double,
+    @SerialName("acc_y")
+    val accelerometerY: Double,
+
+    @SerialName("gyro_x")
+    val gyroscopeX: Double,
+    @SerialName("gyro_y")
+    val gyroscopeY: Double,
+    @SerialName("gyro_z")
+    val gyroscopeZ: Double,
+
+    @SerialName("gps_latitude")
+    val gpsLat: Double,
+    @SerialName("gps_longitude")
+    val gpsLon: Double,
     @SerialName("sensor_data_id")
     val sensorDataId: Int,
-    @SerialName("accelerometer_x")
-    val accelerometerX: Float,
-    @SerialName("accelerometer_y")
-    val accelerometerY: Float,
-    @SerialName("accelerometer_z")
-    val accelerometerZ: Float,
-    @SerialName("gyroscope_x")
-    val gyroscopeX: Float,
-    @SerialName("gyroscope_y")
-    val gyroscopeY: Float,
-    @SerialName("gyroscope_z")
-    val gyroscopeZ: Float,
-    @SerialName("timestamp")
-    val timestamp: LocalDateTime,
-    @SerialName("gps_lat")
-    val gpsLat: Float,
-    @SerialName("gps_lon")
-    val gpsLon: Float,
+    @SerialName("strada_rilevamento")
+    val stradaRilevamento: String
 )
