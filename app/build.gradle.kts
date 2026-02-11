@@ -37,6 +37,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            isDebuggable = true
+            isMinifyEnabled = false
+            applicationIdSuffix = ".debug" // opzionale, per distinguere debug da release
+        }
         release {
             isMinifyEnabled = false
 
@@ -95,7 +100,7 @@ licenseReport {
 dependencies {
     // Blue ST SDK
     implementation(project(":st_blue_sdk"))
-
+    implementation("org.osmdroid:osmdroid-android:6.1.14")
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.bundles.accompanist)
     implementation(libs.bundles.compose)

@@ -9,6 +9,7 @@ package com.st.demo.feature_detail
 
 import android.util.Log
 import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -26,21 +27,27 @@ import com.st.blue_sdk.features.extended.pnpl.PnPL
 import com.st.blue_sdk.features.extended.pnpl.request.PnPLCmd
 import com.st.blue_sdk.features.extended.pnpl.request.PnPLCommand
 import com.st.blue_sdk.services.calibration.CalibrationService
+
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import okhttp3.Dispatcher
 import javax.inject.Inject
 
 @HiltViewModel
 class FeatureDetailViewModel @Inject constructor(
     private val blueManager: BlueManager,
-    private val calibrationService: CalibrationService
-) : ViewModel() {
+    private val calibrationService: CalibrationService,
+) : ViewModel()
+{
 
     companion object {
         private val TAG = FeatureDetailViewModel::class.simpleName
@@ -48,6 +55,16 @@ class FeatureDetailViewModel @Inject constructor(
 
     val featureUpdates: State<FeatureUpdate<*>?>
         get() = _featureUpdates
+
+    // NUOVO: Mappa per feature multiple
+    private val _featureUpdatesMap = mutableStateMapOf<String, FeatureUpdate<*>?>()
+    val featureUpdatesMap: Map<String, FeatureUpdate<*>?> get() = _featureUpdatesMap
+    private val _featureUpdatesMapFlow = MutableStateFlow<Map<String, FeatureUpdate<*>>>(emptyMap())
+    val featureUpdatesMapFlow: StateFlow<Map<String, FeatureUpdate<*>>> = _featureUpdatesMapFlow.asStateFlow()
+
+
+    // NUOVO: Job multipli
+    private val observeFeatureJobs = mutableMapOf<String, Job>()
 
     private val _featureUpdates = mutableStateOf<FeatureUpdate<*>?>(null)
 
@@ -70,20 +87,55 @@ class FeatureDetailViewModel @Inject constructor(
         }
     }
 
+    // Il tuo nuovo metodo per calibrazione multipla
+    fun startMultipleCalibration(deviceId: String, featureNames: List<String>) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val features = blueManager.nodeFeatures(deviceId)
+                .filter { it.name in featureNames }
+            features.forEach { feature ->
+                if (feature.name == Compass.NAME) { // solo se è Compass
+                    val isCalibrated = calibrationService.startCalibration(nodeId = deviceId, feature = feature)
+                    if (!isCalibrated.status) {
+                        blueManager.getConfigControlUpdates(nodeId = deviceId)
+                            .onEach { update ->
+                                if (update is CalibrationStatus) {
+                                    Log.d(TAG, "Calibration ${feature.name} status: ${update.status}")
+                                }
+                            }
+                            .launchIn(this)
+                    }
+                }
+            }
+        }
+    }
+
+
+
     private var observeFeatureJob: Job? = null
 
     fun observeFeature(featureName: String, deviceId: String) {
-        observeFeatureJob?.cancel()
+        observeFeatureJobs[featureName]?.cancel()
 
         blueManager.nodeFeatures(deviceId).find { it.name == featureName }?.let { feature ->
-            observeFeatureJob =
+            observeFeatureJobs[featureName] =
                 blueManager.getFeatureUpdates(nodeId = deviceId, features = listOf(feature))
                     .flowOn(Dispatchers.IO)
-                    .onEach {
-                        _featureUpdates.value = it
+                    .onEach { update ->
+                        _featureUpdatesMap[featureName] = update
+                        _featureUpdatesMapFlow.value =
+                            _featureUpdatesMap.toMap() as Map<String, FeatureUpdate<*>> // Emetti copia immutabile
+                        _featureUpdates.value = update // mantieni per retrocompatibilità
                     }.launchIn(viewModelScope)
         }
     }
+
+
+    fun observeMultipleFeatures(featureNames: List<String>, deviceId: String) {
+        featureNames.forEach { featureName ->
+            observeFeature(featureName, deviceId)
+        }
+    }
+
 
     fun sendExtendedCommand(featureName: String, deviceId: String) {
 
@@ -161,5 +213,11 @@ class FeatureDetailViewModel @Inject constructor(
                 features = features
             )
         }
+    }
+    fun disconnectAllFeatures(deviceId: String) {
+        observeFeatureJobs.values.forEach { it.cancel() }
+        observeFeatureJobs.clear()
+        _featureUpdatesMap.clear()
+        _featureUpdates.value = null
     }
 }

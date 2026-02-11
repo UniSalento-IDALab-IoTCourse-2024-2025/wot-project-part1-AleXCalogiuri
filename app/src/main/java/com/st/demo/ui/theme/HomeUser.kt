@@ -19,11 +19,15 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -81,7 +85,7 @@ fun HomeUser(
                 // Contenuto basato sul ruolo
                 when (user.role) {
                     "ROLE_ADMIN" -> AdminContent(viewModel, secureStorageManager)
-                    "ROLE_OPERATORE" -> OperatoreContent(viewModel, secureStorageManager)
+                    "ROLE_OPERATORE" -> OperatoreContent(viewModel, secureStorageManager,navController)
                     "ROLE_USER" -> UserContent(viewModel, secureStorageManager,navController)
                 }
 
@@ -186,7 +190,9 @@ fun AdminContent(viewModel: LoginViewModel, secureStorageManager: SecureStorageM
 }
 
 @Composable
-fun OperatoreContent(viewModel: LoginViewModel, secureStorageManager: SecureStorageManager) {
+fun OperatoreContent(viewModel: LoginViewModel, secureStorageManager: SecureStorageManager,navController: NavController) {
+    val city = remember { mutableStateOf("") }
+    val fieldsIndicatorColor = remember { mutableStateOf(Color.Transparent) }
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -208,10 +214,31 @@ fun OperatoreContent(viewModel: LoginViewModel, secureStorageManager: SecureStor
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = "Gestione enti e operazioni")
-            // TODO: Rest call su EnteRestController
 
+            OutlinedTextField(
+                value = city.value,
+                onValueChange = { city.value = it },
+                singleLine = true,
+                label = { Text("Città(Opzionale)") },
+                modifier = Modifier
+                    .padding(start = 16.dp, end = 16.dp, top = 16.dp)
+                    .fillMaxWidth(),
+                colors = TextFieldDefaults.colors(
+                    cursorColor = Color(0xFF3A7BD5),
+                    unfocusedContainerColor = Color(0xFFE3F2FD),
+                    focusedContainerColor = Color.White,
+                    unfocusedLabelColor = Color.Black,
+                    unfocusedIndicatorColor = fieldsIndicatorColor.value,
+                    focusedIndicatorColor = fieldsIndicatorColor.value,
+                ),
+                shape = RoundedCornerShape(8.dp)
+            )
             ActionButton("Vedi mappa rilevamenti") {
-                //TODO rest call su roadManagement
+                if (city.value.isEmpty()) {
+                    navController.navigate("map")  // o "map?city="
+                } else {
+                    navController.navigate("map?city=${city.value}")
+                }
             }
         }
     }
@@ -242,9 +269,6 @@ fun UserContent(viewModel: LoginViewModel,
                 style = MaterialTheme.typography.titleLarge
             )
             Spacer(modifier = Modifier.height(8.dp))
-            Text(text = "Qui poi metto le info del dispositivo")
-            Spacer(modifier = Modifier.height(16.dp))
-
             ActionButton("Aggiungi Device") {
                 navController.navigate("list")
             }
